@@ -324,40 +324,71 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- AI Scanner logic ---
-    scanBtn.onclick = () => aiModal.style.display = 'block';
-    closeModal.onclick = () => aiModal.style.display = 'none';
-    window.onclick = (e) => { if (e.target === aiModal) aiModal.style.display = 'none'; };
+    const videoFeed = document.getElementById('video-feed');
+    const toggleCameraBtn = document.getElementById('toggle-camera-btn');
+    let stream = null;
+    let currentFacingMode = 'environment';
 
-    captureBtn.onclick = () => cameraInput.click();
+    async function startCamera() {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+        }
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: currentFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } }
+            });
+            videoFeed.srcObject = stream;
+        } catch (err) {
+            console.error("Camera error:", err);
+            document.getElementById('ai-status').innerHTML = '<span style="color: #ff3e3e">Error al acceder a la cámara. Revisa los permisos.</span>';
+        }
+    }
 
-    cameraInput.onchange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const img = new Image();
-            img.onload = () => processAndIdentify(img);
-            img.src = event.target.result;
-        };
-        reader.readAsDataURL(file);
+    scanBtn.onclick = () => {
+        aiModal.style.display = 'block';
+        startCamera();
     };
 
-    function processAndIdentify(img) {
+    closeModal.onclick = () => {
+        aiModal.style.display = 'none';
+        if (stream) stream.getTracks().forEach(track => track.stop());
+    };
+
+    toggleCameraBtn.onclick = () => {
+        currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+        startCamera();
+    };
+
+    captureBtn.onclick = () => {
+        if (!stream) return;
         const canvas = document.getElementById('crop-canvas');
         const ctx = canvas.getContext('2d');
-        const cropWidth = img.width * 0.8;
-        const cropHeight = img.height * 0.8;
-        const startX = (img.width - cropWidth) / 2;
-        const startY = (img.height - cropHeight) / 2;
+        
+        // Match aspect ratio
         canvas.width = 400;
         canvas.height = 560;
-        ctx.drawImage(img, startX, startY, cropWidth, cropHeight, 0, 0, canvas.width, canvas.height);
-        const croppedBase64 = canvas.toDataURL('image/jpeg', 0.8);
-        scanPreview.style.backgroundImage = `url(${croppedBase64})`;
+        
+        // Take Snapshot from video
+        // We want to crop the central area that matches the CSS frame
+        const vW = videoFeed.videoWidth;
+        const vH = videoFeed.videoHeight;
+        const cropW = vW * 0.7; // Approx matching the CSS frame
+        const cropH = vH * 0.7;
+        const sX = (vW - cropW) / 2;
+        const sY = (vH - cropH) / 2;
+
+        ctx.drawImage(videoFeed, sX, sY, cropW, cropH, 0, 0, canvas.width, canvas.height);
+        
+        const capturedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+        videoFeed.style.display = 'none';
+        scanPreview.style.backgroundImage = `url(${capturedBase64})`;
         scanPreview.style.backgroundSize = 'cover';
-        identifyCard(croppedBase64);
-    }
+        
+        identifyCard(capturedBase64);
+        
+        // Stop camera to save battery
+        stream.getTracks().forEach(track => track.stop());
+    };
 
     // Load saved API Key
     const apiKeyInput = document.getElementById('api-key-input');
@@ -379,7 +410,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    model: 'google/gemini-flash-1.5',
+                    model: 'google/gemini-2.0-flash-exp:free', // Using reliable free model
                     messages: [
                         {
                             role: 'user',
@@ -415,11 +446,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 setTimeout(() => {
                     aiModal.style.display = 'none';
-                    currentTeam = 'all';
-                    currentFilter = 'all';
-                    filterBtns.forEach(b => b.classList.remove('active'));
-                    filterBtns[0].classList.add('active');
-                    teamFilter.value = 'all';
+                    videoFeed.style.display = 'block'; // Reset for next scan
+                    scanPreview.style.backgroundImage = 'none';
                     renderCards();
                     
                     const safeId = `card-${finalId.replace(/[^a-zA-Z0-9]/g, '_')}`;
@@ -429,13 +457,23 @@ document.addEventListener('DOMContentLoaded', () => {
                         element.classList.add('highlight');
                         setTimeout(() => element.classList.remove('highlight'), 3000);
                     }
-                }, 1500);
+                }, 2000);
             } else {
                 aiStatus.innerHTML = `Dudado como "${resultText}", prueba de nuevo o márcalo a mano.`;
+                setTimeout(() => {
+                    videoFeed.style.display = 'block';
+                    scanPreview.style.backgroundImage = 'none';
+                    startCamera();
+                }, 3000);
             }
         } catch (error) {
             console.error('AI Error:', error);
             aiStatus.innerHTML = `<span style="color: #ff3e3e">Error: ${error.message}</span>`;
+            setTimeout(() => {
+                videoFeed.style.display = 'block';
+                scanPreview.style.backgroundImage = 'none';
+                startCamera();
+            }, 3000);
         }
     }
 

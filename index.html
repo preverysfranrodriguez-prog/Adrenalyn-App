@@ -44,18 +44,21 @@
             <div class="modal-content">
                 <span class="close-modal">&times;</span>
                 <h3>Escáner Inteligente</h3>
-                <p>Haz una foto a la carta para identificarla.</p>
-                <input type="file" id="camera-input" accept="image/*" capture="environment" style="display: none;">
-                <button id="capture-btn" class="primary-btn">Hacer Foto</button>
+                
                 <div id="scan-preview" class="scan-preview">
+                    <video id="video-feed" autoplay playsinline muted></video>
                     <div class="camera-frame"></div>
                 </div>
                 <canvas id="crop-canvas" style="display: none;"></canvas>
                 <div id="ai-status" class="ai-status"></div>
                 
                 <div class="api-key-section">
-                    <input type="password" id="api-key-input" placeholder="Pega tu API Key de OpenRouter">
-                    <p class="small-hint">Necesario para el reconocimiento por IA.</p>
+                    <input type="password" id="api-key-input" placeholder="Tu API Key de OpenRouter">
+                </div>
+
+                <div class="scanner-actions">
+                    <button id="capture-btn" class="primary-btn">📸 Capturar Carta</button>
+                    <button id="toggle-camera-btn" class="secondary-btn">🔄 Girar Cámara</button>
                 </div>
             </div>
         </div>
