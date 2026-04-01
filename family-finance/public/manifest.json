@@ -1,0 +1,16 @@
+{
+  "name": "Family Finance",
+  "short_name": "Finance",
+  "description": "Gestión financiera y familiar en tiempo real",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/window.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
